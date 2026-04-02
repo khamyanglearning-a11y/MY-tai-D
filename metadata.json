@@ -1,0 +1,5 @@
+{
+  "name": "Tai Dictionary",
+  "description": "A modern, mobile-friendly dictionary for the Tai language with offline support and Google Sheets integration.",
+  "requestFramePermissions": []
+}
