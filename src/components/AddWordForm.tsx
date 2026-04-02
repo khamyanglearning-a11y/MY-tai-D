@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Send, CheckCircle2, Keyboard } from 'lucide-react';
 import { VirtualKeyboard } from './VirtualKeyboard';
 import { useDictionary } from '../hooks/useDictionary';
+import { TAI_PHAKE_LAYOUT } from '../constants/keyboards';
 import { cn } from '../lib/utils';
 
 export function AddWordForm() {
@@ -14,12 +15,21 @@ export function AddWordForm() {
     assameseMeaning: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const taiInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
+    if (!formData.taiWord || !formData.pronunciation || !formData.englishMeaning || !formData.assameseMeaning) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
     try {
       await addWord(formData);
       setSubmitted(true);
@@ -31,8 +41,11 @@ export function AddWordForm() {
         assameseMeaning: '',
       });
       setShowKeyboard(false);
-    } catch (error) {
-      console.error('Error adding word:', error);
+    } catch (err) {
+      setError('Failed to add word. Please try again.');
+      console.error('Error adding word:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,6 +74,11 @@ export function AddWordForm() {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-bold">
+            {error}
+          </div>
+        )}
         <div className="space-y-2 relative">
           <div className="flex justify-between items-center">
             <label className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Tai Word</label>
@@ -126,10 +144,12 @@ export function AddWordForm() {
 
         <button
           type="submit"
-          disabled={submitted}
-          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-green-600 text-white font-bold rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 mt-4"
+          disabled={submitted || loading}
+          className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 mt-4"
         >
-          {submitted ? (
+          {loading ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : submitted ? (
             <>
               <CheckCircle2 className="w-5 h-5" />
               Submitted Successfully
@@ -148,6 +168,8 @@ export function AddWordForm() {
         onClose={() => setShowKeyboard(false)}
         onInput={handleKeyboardInput}
         onDelete={handleKeyboardDelete}
+        layout={TAI_PHAKE_LAYOUT}
+        title="Tai Phake Keyboard"
       />
     </motion.div>
   );

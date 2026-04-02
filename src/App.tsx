@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, BarChart2, RefreshCw, WifiOff, Heart, ChevronRight, PlusCircle, ArrowLeft, Trash2, Edit3, Check, X, Keyboard } from 'lucide-react';
+import { Info, BarChart2, RefreshCw, WifiOff, ChevronRight, PlusCircle, ArrowLeft, Trash2, Edit3, Check, X, Keyboard } from 'lucide-react';
 import { useLocalStorage } from 'react-use';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -11,11 +11,12 @@ import { BottomNav } from './components/BottomNav';
 import { AddWordForm } from './components/AddWordForm';
 import { VirtualKeyboard } from './components/VirtualKeyboard';
 import { useDictionary } from './hooks/useDictionary';
+import { TAI_PHAKE_LAYOUT } from './constants/keyboards';
 import { cn } from './lib/utils';
 import { Word } from './types';
 
 function Home() {
-  const { words, favorites, loading, error, isOffline, fetchWords, toggleFavorite } = useDictionary();
+  const { words, loading, error, isOffline, fetchWords } = useDictionary();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredWords = useMemo(() => {
@@ -88,8 +89,6 @@ function Home() {
               <WordCard 
                 key={word.id} 
                 word={word} 
-                isFavorite={favorites.includes(word.id)}
-                onToggleFavorite={toggleFavorite}
               />
             ))}
           </div>
@@ -107,55 +106,6 @@ function Home() {
   );
 }
 
-function Favorites() {
-  const { words, favorites, toggleFavorite } = useDictionary();
-  const favoriteWords = words.filter(w => favorites.includes(w.id));
-  const navigate = useNavigate();
-
-  return (
-    <div className="px-4 py-8 pb-24">
-      <button 
-        onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-indigo-500 transition-colors font-medium"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </button>
-
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center">
-          <Heart className="w-6 h-6 text-red-500 fill-red-500" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">Favorites</h1>
-          <p className="text-sm text-zinc-500">Your saved words</p>
-        </div>
-      </div>
-
-      {favoriteWords.length > 0 ? (
-        <div className="space-y-4">
-          {favoriteWords.map((word) => (
-            <WordCard 
-              key={word.id} 
-              word={word} 
-              isFavorite={true}
-              onToggleFavorite={toggleFavorite}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center px-10">
-          <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-4">
-            <Heart className="w-8 h-8 text-zinc-300" />
-          </div>
-          <h3 className="text-xl font-bold text-zinc-900 mb-2">No favorites yet</h3>
-          <p className="text-zinc-500">Tap the heart icon on any word to save it here.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Settings() {
   return (
     <div className="px-4 py-8 pb-24">
@@ -165,18 +115,6 @@ function Settings() {
         <section>
           <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4 px-1">Dictionary</h2>
           <div className="bg-white rounded-2xl border border-zinc-100 overflow-hidden divide-y divide-zinc-50">
-            <Link 
-              to="/favorites"
-              className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
-                  <Heart className="w-5 h-5 fill-red-500" />
-                </div>
-                <span className="font-bold text-zinc-700">Favorites</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-zinc-300" />
-            </Link>
             <Link 
               to="/add"
               className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors"
@@ -309,26 +247,49 @@ function ManageWords() {
   const [editData, setEditData] = useState<Partial<Word>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const editTaiInputRef = useRef<HTMLInputElement>(null);
 
   const handleStartEdit = (word: Word) => {
     setEditingId(word.id);
     setEditData(word);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingId) {
-      updateWord(editingId, editData);
-      setEditingId(null);
-      setShowKeyboard(false);
+      setIsSaving(true);
+      try {
+        await updateWord(editingId, editData);
+        setEditingId(null);
+        setShowKeyboard(false);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
   const handleKeyboardInput = (char: string) => {
     setEditData(prev => ({ ...prev, taiWord: (prev.taiWord || '') + char }));
+    editTaiInputRef.current?.focus();
   };
 
   const handleKeyboardDelete = () => {
     setEditData(prev => ({ ...prev, taiWord: (prev.taiWord || '').slice(0, -1) }));
+    editTaiInputRef.current?.focus();
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deletingId) {
+      await deleteWord(deletingId);
+      setDeletingId(null);
+    }
   };
 
   const filteredWords = useMemo(() => {
@@ -393,6 +354,7 @@ function ManageWords() {
                       </button>
                     </div>
                     <input 
+                      ref={editTaiInputRef}
                       className="w-full p-3 bg-zinc-50 border border-zinc-100 rounded-xl text-sm font-bold"
                       value={editData.taiWord}
                       onChange={(e) => setEditData({ ...editData, taiWord: e.target.value })}
@@ -418,23 +380,29 @@ function ManageWords() {
                     onChange={(e) => setEditData({ ...editData, assameseMeaning: e.target.value })}
                     placeholder="Assamese Meaning"
                   />
-                  <div className="flex gap-2 pt-2">
-                    <button 
-                      onClick={handleSaveEdit}
-                      className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                    >
-                      <Check className="w-4 h-4" /> Save
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setEditingId(null);
-                        setShowKeyboard(false);
-                      }}
-                      className="flex-1 bg-zinc-100 text-zinc-600 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                    >
-                      <X className="w-4 h-4" /> Cancel
-                    </button>
-                  </div>
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        onClick={handleSaveEdit}
+                        disabled={isSaving}
+                        className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:bg-indigo-400"
+                      >
+                        {isSaving ? (
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <><Check className="w-4 h-4" /> Save</>
+                        )}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setEditingId(null);
+                          setShowKeyboard(false);
+                        }}
+                        disabled={isSaving}
+                        className="flex-1 bg-zinc-100 text-zinc-600 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                      >
+                        <X className="w-4 h-4" /> Cancel
+                      </button>
+                    </div>
                 </div>
               ) : (
                 <div className="flex justify-between items-start">
@@ -452,7 +420,7 @@ function ManageWords() {
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={() => deleteWord(word.id)}
+                      onClick={() => handleDelete(word.id)}
                       className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -469,11 +437,48 @@ function ManageWords() {
         )}
       </div>
 
+      <AnimatePresence>
+        {deletingId && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150] flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-zinc-900 mb-2">Delete Word?</h3>
+              <p className="text-zinc-500 text-sm mb-6">This action cannot be undone. Are you sure you want to delete this word?</p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-500 text-white py-3 rounded-xl font-bold text-sm"
+                >
+                  Delete
+                </button>
+                <button 
+                  onClick={() => setDeletingId(null)}
+                  className="flex-1 bg-zinc-100 text-zinc-600 py-3 rounded-xl font-bold text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <VirtualKeyboard 
         isVisible={showKeyboard}
         onClose={() => setShowKeyboard(false)}
         onInput={handleKeyboardInput}
         onDelete={handleKeyboardDelete}
+        layout={TAI_PHAKE_LAYOUT}
+        title="Tai Phake Keyboard"
       />
     </div>
   );
@@ -525,7 +530,6 @@ export default function App() {
           <Routes>
             <Route path="/" element={<PageTransition><Home /></PageTransition>} />
             <Route path="/status" element={<PageTransition><Status /></PageTransition>} />
-            <Route path="/favorites" element={<PageTransition><Favorites /></PageTransition>} />
             <Route path="/add" element={<PageTransition><Add /></PageTransition>} />
             <Route path="/manage" element={<PageTransition><ManageWords /></PageTransition>} />
             <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />

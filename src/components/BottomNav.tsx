@@ -10,7 +10,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-100 px-6 py-3 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-800 px-6 py-3 z-50">
       <div className="flex justify-between items-center max-w-md mx-auto">
         {navItems.map((item) => (
           <NavLink
@@ -19,7 +19,7 @@ export function BottomNav() {
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-1 transition-all duration-200",
-                isActive ? "text-indigo-600" : "text-zinc-400"
+                isActive ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-400 dark:text-zinc-500"
               )
             }
           >

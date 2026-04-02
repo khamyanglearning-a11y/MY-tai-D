@@ -5,12 +5,10 @@ import { cn } from '../lib/utils';
 
 interface WordCardProps {
   word: Word;
-  isFavorite: boolean;
-  onToggleFavorite: (id: string) => void;
   key?: string | number;
 }
 
-export function WordCard({ word, isFavorite, onToggleFavorite }: WordCardProps) {
+export function WordCard({ word }: WordCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -25,21 +23,6 @@ export function WordCard({ word, isFavorite, onToggleFavorite }: WordCardProps) 
           <p className="text-sm font-medium text-zinc-500 italic">
             {word.pronunciation}
           </p>
-        </div>
-        <div className="flex gap-2">
-          <motion.button
-            whileTap={{ scale: 0.8 }}
-            onClick={() => onToggleFavorite(word.id)}
-            className="p-2 rounded-full hover:bg-zinc-100 transition-colors"
-            aria-label="Favorite"
-          >
-            <Heart
-              className={cn(
-                "w-5 h-5 transition-colors",
-                isFavorite ? "fill-red-500 text-red-500" : "text-zinc-400"
-              )}
-            />
-          </motion.button>
         </div>
       </div>
 

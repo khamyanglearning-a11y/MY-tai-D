@@ -134,14 +134,15 @@ export function DictionaryProvider({ children }: { children: ReactNode }) {
 
   const updateWord = async (id: string, updatedData: Partial<Word>) => {
     try {
+      const updatePayload: any = {};
+      if (updatedData.taiWord !== undefined) updatePayload.tai_word = updatedData.taiWord;
+      if (updatedData.pronunciation !== undefined) updatePayload.pronunciation = updatedData.pronunciation;
+      if (updatedData.englishMeaning !== undefined) updatePayload.english_meaning = updatedData.englishMeaning;
+      if (updatedData.assameseMeaning !== undefined) updatePayload.assamese_meaning = updatedData.assameseMeaning;
+
       const { error: supabaseError } = await supabase
         .from('words')
-        .update({
-          tai_word: updatedData.taiWord,
-          pronunciation: updatedData.pronunciation,
-          english_meaning: updatedData.englishMeaning,
-          assamese_meaning: updatedData.assameseMeaning
-        })
+        .update(updatePayload)
         .eq('id', id);
 
       if (supabaseError) throw supabaseError;
@@ -153,7 +154,7 @@ export function DictionaryProvider({ children }: { children: ReactNode }) {
           ...prev!,
           history: [{
             id: Date.now().toString(),
-            word: word.taiWord,
+            word: updatedData.taiWord || word.taiWord,
             action: 'edited',
             timestamp: Date.now()
           }, ...(prev?.history || [])]
